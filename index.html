@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Location Accuracy Analysis</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Side Drawer -->
+    <div id="sideDrawer" class="side-drawer">
+        <div id="resizeHandle" class="resize-handle" title="Drag to resize">
+            <div class="resize-handle-line"></div>
+        </div>
+
+        <div class="drawer-header">
+            <h2>All Orders</h2>
+            <button id="closeDrawer" class="close-drawer" aria-label="Close drawer">&times;</button>
+        </div>
+
+        <div class="drawer-controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by User ID or Order ID...">
+            </div>
+
+            <div class="filter-sort-section">
+                <div class="filter-group">
+                    <label for="cityFilter">Filter by City:</label>
+                    <select id="cityFilter">
+                        <option value="">All Cities</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="orderCountFilter">Min Orders:</label>
+                    <select id="orderCountFilter">
+                        <option value="">All</option>
+                        <option value="2">2+</option>
+                        <option value="3">3+</option>
+                        <option value="5">5+</option>
+                        <option value="10">10+</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="sort-section">
+                <div class="sort-group">
+                    <label for="sortBy">Sort by:</label>
+                    <div class="sort-controls">
+                        <select id="sortBy">
+                            <option value="userId">User ID</option>
+                            <option value="orderCount">Order Count</option>
+                            <option value="lastOrderDate">Last Order Date</option>
+                            <option value="city">City</option>
+                        </select>
+                        <button id="sortDirection" class="sort-direction-btn" title="Toggle sort direction">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <polyline points="19 12 12 19 5 12"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="drawer-table-container">
+            <table id="ordersTable">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Order Count</th>
+                        <th>Last Order Date</th>
+                        <th>City</th>
+                        <th>DS ID</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    <tr>
+                        <td colspan="5" class="no-data">No data loaded. Please upload orders data.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="drawerOverlay" class="drawer-overlay"></div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <button id="openDrawer" class="drawer-toggle-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                    View All Orders
+                </button>
+                <h1>Delivery Location Accuracy</h1>
+            </div>
+            <div class="file-upload-section">
+                <input type="file" id="ordersFile" accept=".csv,.json" style="display: none;">
+                <input type="file" id="darkstoresFile" accept=".csv,.json" style="display: none;">
+                <button class="upload-btn" onclick="document.getElementById('ordersFile').click()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Orders Data
+                </button>
+                <button class="upload-btn" onclick="document.getElementById('darkstoresFile').click()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Darkstores Data
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Left: Map -->
+            <div class="map-section">
+                <div class="map-header">
+                    <h2>Location Map</h2>
+                    <div class="map-controls">
+                        <select id="mapStyle">
+                            <option value="osm">OpenStreetMap</option>
+                            <option value="minimal">Minimal (No POIs)</option>
+                            <option value="light">Light Mode</option>
+                            <option value="streets">Streets Only</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="map-search-container">
+                    <input type="text" id="mapSearch" placeholder="Search location (e.g., Mumbai, Delhi, or coordinates)">
+                    <button id="searchBtn" class="search-location-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="map"></div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-marker order-marker"></span>
+                        <span>Delivery Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-marker darkstore-marker"></span>
+                        <span>Darkstore</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: User Order Details -->
+            <div class="details-section">
+                <div class="details-header">
+                    <div id="userInfo" class="user-info-banner">
+                        <p>Select a user to view their order details</p>
+                    </div>
+                </div>
+                <div class="details-table-container">
+                    <table id="detailsTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Address & Landmark</th>
+                                <th>City</th>
+                                <th>Pincode</th>
+                                <th>Lat, Long</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailsTableBody">
+                            <tr>
+                                <td colspan="5" class="no-data">No user selected</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
