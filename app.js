@@ -9,6 +9,12 @@ let currentTileLayer = null;
 let orderMarkers = {}; // Store markers by order ID for hover functionality
 let sortDirection = 'desc'; // Default sort direction
 
+// Distance measurement state
+let measurementMode = false;
+let selectedMarkers = [];
+let measurementLine = null;
+let measurementLabel = null;
+
 // Map tile layer configurations
 const mapStyles = {
     osm: {
@@ -105,80 +111,94 @@ function changeMapStyle(styleKey) {
     map.setView(center, zoom);
 }
 
-// Search location on map
-let searchMarker = null;
+// Distance measurement functions
+function toggleMeasurementMode() {
+    measurementMode = !measurementMode;
+    const btn = document.getElementById('measureDistanceBtn');
 
-function searchLocation() {
-    const searchInput = document.getElementById('mapSearch');
-    const query = searchInput.value.trim();
-
-    if (!query) {
-        alert('Please enter a location to search');
-        return;
+    if (measurementMode) {
+        btn.classList.add('active');
+        clearMeasurement();
+        alert('Measurement mode ON: Click on any two markers to measure distance between them.');
+    } else {
+        btn.classList.remove('active');
+        clearMeasurement();
     }
-
-    // Check if input is coordinates (lat,long format)
-    const coordsMatch = query.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
-    if (coordsMatch) {
-        const lat = parseFloat(coordsMatch[1]);
-        const lng = parseFloat(coordsMatch[2]);
-
-        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-            showLocationOnMap(lat, lng, 'Searched Coordinates');
-            return;
-        }
-    }
-
-    // Use Nominatim geocoding service for place names
-    const searchBtn = document.getElementById('searchBtn');
-    searchBtn.disabled = true;
-    searchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>';
-
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.length > 0) {
-                const lat = parseFloat(data[0].lat);
-                const lng = parseFloat(data[0].lon);
-                const displayName = data[0].display_name;
-                showLocationOnMap(lat, lng, displayName);
-            } else {
-                alert('Location not found. Try searching for a city name or coordinates (e.g., 28.6139, 77.2090)');
-            }
-        })
-        .catch(error => {
-            console.error('Search error:', error);
-            alert('Error searching location. Please try again.');
-        })
-        .finally(() => {
-            searchBtn.disabled = false;
-            searchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>';
-        });
 }
 
-function showLocationOnMap(lat, lng, name) {
-    if (!map) return;
+function clearMeasurement() {
+    selectedMarkers = [];
 
-    // Remove previous search marker if exists
-    if (searchMarker) {
-        map.removeLayer(searchMarker);
+    // Remove existing line and label
+    if (measurementLine) {
+        map.removeLayer(measurementLine);
+        measurementLine = null;
     }
+    if (measurementLabel) {
+        map.removeLayer(measurementLabel);
+        measurementLabel = null;
+    }
+}
 
-    // Create a custom icon for search result
-    const searchIcon = L.divIcon({
-        className: 'custom-marker search-marker',
-        html: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#10b981" width="36" height="36"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-        popupAnchor: [0, -36]
-    });
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    // Haversine formula to calculate distance in kilometers
+    const R = 6371; // Radius of Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    return distance;
+}
 
-    // Add search marker
-    searchMarker = L.marker([lat, lng], { icon: searchIcon }).addTo(map);
-    searchMarker.bindPopup(`<div class="popup-content"><h3>Search Result</h3><p>${name}</p></div>`).openPopup();
+function formatDistance(distanceKm) {
+    if (distanceKm < 1) {
+        return `${Math.round(distanceKm * 1000)} m`;
+    } else {
+        return `${distanceKm.toFixed(2)} km`;
+    }
+}
 
-    // Zoom to location
-    map.setView([lat, lng], 13);
+function handleMarkerClickForMeasurement(latLng, markerType) {
+    if (!measurementMode) return;
+
+    selectedMarkers.push({ latLng, markerType });
+
+    if (selectedMarkers.length === 2) {
+        // Calculate distance
+        const point1 = selectedMarkers[0].latLng;
+        const point2 = selectedMarkers[1].latLng;
+        const distance = calculateDistance(point1.lat, point1.lng, point2.lat, point2.lng);
+
+        // Draw line between points
+        measurementLine = L.polyline([point1, point2], {
+            color: '#ef4444',
+            weight: 3,
+            opacity: 0.7,
+            dashArray: '10, 5'
+        }).addTo(map);
+
+        // Calculate midpoint for label
+        const midLat = (point1.lat + point2.lat) / 2;
+        const midLng = (point1.lng + point2.lng) / 2;
+
+        // Add distance label at midpoint
+        const labelIcon = L.divIcon({
+            className: 'distance-label',
+            html: `<div class="distance-label-content">${formatDistance(distance)}</div>`,
+            iconSize: [100, 30],
+            iconAnchor: [50, 15]
+        });
+
+        measurementLabel = L.marker([midLat, midLng], { icon: labelIcon }).addTo(map);
+
+        // Reset for next measurement
+        setTimeout(() => {
+            clearMeasurement();
+        }, 5000); // Clear after 5 seconds, or user can click the button again to clear
+    }
 }
 
 // Parse CSV or JSON file
@@ -264,6 +284,10 @@ function normalizeOrderData(data) {
                 normalized.city = row[key];
             } else if (trimmedKey === 'Del state' || lowerKey === 'delstate') {
                 normalized.state = row[key];
+            } else if (trimmedKey === 'deliveryAgent' || lowerKey === 'deliveryagent') {
+                normalized.deliveryAgent = row[key];
+            } else if (trimmedKey === 'podImg' || lowerKey === 'podimg') {
+                normalized.podImg = row[key];
             } else {
                 // Keep any other fields as-is
                 normalized[key] = row[key];
@@ -446,24 +470,65 @@ function plotUserOrders(userId) {
         if (order.landmark) addressParts.push(order.landmark);
         const fullAddress = addressParts.join(', ') || 'N/A';
 
-        const popupContent = `
-            <div class="popup-content">
-                <h3>Order Details</h3>
-                <p><strong>Order ID:</strong> ${order.orderId}</p>
-                <p><strong>User ID:</strong> ${order.userId}</p>
-                <p><strong>Order Date:</strong> ${order.orderDate || 'N/A'}</p>
-                <p><strong>Address:</strong> ${fullAddress}</p>
-                <p><strong>City:</strong> ${order.city || 'N/A'}</p>
-                <p><strong>State:</strong> ${order.state || 'N/A'}</p>
-                <p><strong>Pincode:</strong> ${order.pincode || 'N/A'}</p>
-                <p><strong>DS ID:</strong> ${order.dsId || 'N/A'}</p>
-                <p><strong>Coordinates:</strong> ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}</p>
-            </div>
+        // Build full address with city and pincode
+        let addressWithCity = fullAddress;
+        if (order.city || order.pincode) {
+            const cityPincode = [order.city, order.pincode].filter(Boolean).join(' - ');
+            if (cityPincode) {
+                addressWithCity += (fullAddress !== 'N/A' ? ', ' : '') + cityPincode;
+            }
+        }
+
+        // Build popup content with POD image on left if available
+        let popupContent = `<div class="popup-content">`;
+
+        // Check if POD image exists
+        const hasPodImg = order.podImg && order.podImg !== 'null' && order.podImg !== '';
+
+        if (hasPodImg) {
+            popupContent += `
+                <div class="popup-layout-horizontal">
+                    <div class="pod-image-container">
+                        <img src="${order.podImg}" alt="POD Image" class="pod-image" onerror="this.style.display='none'; this.parentElement.classList.add('pod-error-state');">
+                        <p class="pod-error" style="display:none;">Image failed to load</p>
+                    </div>
+                    <div class="popup-text-content">
+            `;
+        } else {
+            popupContent += `<div class="popup-text-content">`;
+        }
+
+        popupContent += `
+                        <h3>Order Details</h3>
+                        <div class="popup-row">
+                            <p><strong>Order ID:</strong> ${order.orderId}</p>
+                            <p><strong>User ID:</strong> ${order.userId}</p>
+                        </div>
+                        <p><strong>Order Date:</strong> ${order.orderDate || 'N/A'}</p>
+                        <p><strong>Address:</strong> ${addressWithCity}</p>
+                        <p><strong>Coordinates:</strong> ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}</p>
+                        <p><strong>Delivery Agent:</strong> ${order.deliveryAgent || 'N/A'}</p>
         `;
+
+        if (hasPodImg) {
+            popupContent += `
+                    </div>
+                </div>
+            `;
+        } else {
+            popupContent += `</div>`;
+        }
+
+        popupContent += `</div>`;
 
         marker.bindPopup(popupContent);
         marker.addTo(markersLayer);
         bounds.push([coords.lat, coords.lng]);
+
+        // Add click handler for distance measurement
+        marker.on('click', function(e) {
+            handleMarkerClickForMeasurement(e.latlng, 'order');
+        });
 
         // Store marker reference by order ID
         orderMarkers[order.orderId] = marker;
@@ -494,6 +559,11 @@ function plotUserOrders(userId) {
             marker.bindPopup(popupContent);
             marker.addTo(markersLayer);
             bounds.push([coords.lat, coords.lng]);
+
+            // Add click handler for distance measurement
+            marker.on('click', function(e) {
+                handleMarkerClickForMeasurement(e.latlng, 'darkstore');
+            });
         }
     });
 
@@ -821,18 +891,60 @@ document.getElementById('mapStyle').addEventListener('change', function(e) {
     changeMapStyle(e.target.value);
 });
 
-// Map search listeners
-document.getElementById('searchBtn').addEventListener('click', searchLocation);
-document.getElementById('mapSearch').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        searchLocation();
-    }
-});
-
 // Drawer toggle listeners
 document.getElementById('openDrawer').addEventListener('click', openDrawer);
 document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
 document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+
+// Distance measurement toggle
+document.getElementById('measureDistanceBtn').addEventListener('click', toggleMeasurementMode);
+
+// SQL Tooltip functionality
+document.getElementById('ordersInfoBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    const tooltip = document.getElementById('ordersTooltip');
+    const darkstoresTooltip = document.getElementById('darkstoresTooltip');
+
+    // Toggle orders tooltip
+    if (tooltip.classList.contains('active')) {
+        tooltip.classList.remove('active');
+    } else {
+        tooltip.classList.add('active');
+        // Close darkstores tooltip if open
+        darkstoresTooltip.classList.remove('active');
+    }
+});
+
+document.getElementById('darkstoresInfoBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    const tooltip = document.getElementById('darkstoresTooltip');
+    const ordersTooltip = document.getElementById('ordersTooltip');
+
+    // Toggle darkstores tooltip
+    if (tooltip.classList.contains('active')) {
+        tooltip.classList.remove('active');
+    } else {
+        tooltip.classList.add('active');
+        // Close orders tooltip if open
+        ordersTooltip.classList.remove('active');
+    }
+});
+
+// Close tooltips when clicking close button
+document.querySelectorAll('.tooltip-close').forEach(btn => {
+    btn.addEventListener('click', function() {
+        this.closest('.sql-tooltip').classList.remove('active');
+    });
+});
+
+// Close tooltips when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.info-icon-btn') && !e.target.closest('.sql-tooltip')) {
+        document.querySelectorAll('.sql-tooltip').forEach(tooltip => {
+            tooltip.classList.remove('active');
+        });
+    }
+});
 
 // Initialize map and drawer resize on page load
 window.addEventListener('load', function() {

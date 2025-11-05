@@ -106,22 +106,74 @@
             <div class="file-upload-section">
                 <input type="file" id="ordersFile" accept=".csv,.json" style="display: none;">
                 <input type="file" id="darkstoresFile" accept=".csv,.json" style="display: none;">
-                <button class="upload-btn" onclick="document.getElementById('ordersFile').click()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    Orders Data
-                </button>
-                <button class="upload-btn" onclick="document.getElementById('darkstoresFile').click()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    Darkstores Data
-                </button>
+
+                <div class="upload-btn-group">
+                    <button class="upload-btn" onclick="document.getElementById('ordersFile').click()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Orders Data
+                    </button>
+                    <button class="info-icon-btn" id="ordersInfoBtn" title="View SQL Query">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="upload-btn-group">
+                    <button class="upload-btn" onclick="document.getElementById('darkstoresFile').click()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Darkstores Data
+                    </button>
+                    <button class="info-icon-btn" id="darkstoresInfoBtn" title="View SQL Query">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SQL Query Tooltips -->
+            <div id="ordersTooltip" class="sql-tooltip">
+                <div class="tooltip-header">
+                    <span>Orders Data SQL Query</span>
+                    <button class="tooltip-close">&times;</button>
+                </div>
+                <pre class="sql-code">SELECT o.userid, o.orderID, o.delCompanyAddress, o.delCompanyAddress2,
+       o.delLandmark, o.delPincode, o.delCity, o.delState,
+       CONCAT(ol.latitude,',',ol.longitude) as deliveryLatLong,
+       ol.createdOn as oDate, sm.fmWarehouseId as dsid,
+       pu.userName as deliveryAgent,
+       JSON_UNQUOTE(ol.requestData->'$.podImg[0]') as podImg
+FROM orders o
+INNER JOIN open_orders_log ol On ol.orderId=o.orderID
+INNER JOIN seller_master sm ON sm.userid = o.sellerID
+LEFT JOIN panel_users pu ON pu.userId=ol.createdBy
+WHERE o.delAddressId=1
+  AND DATE_FORMAT(o.updated_at,'%Y%m%d')>20251005
+ORDER BY o.userId</pre>
+            </div>
+
+            <div id="darkstoresTooltip" class="sql-tooltip">
+                <div class="tooltip-header">
+                    <span>Darkstores Data SQL Query</span>
+                    <button class="tooltip-close">&times;</button>
+                </div>
+                <pre class="sql-code">SELECT lpa.uniqueId as dsid,
+       CONCAT(lpa.latitude,',',lpa.longitude) as DarkStoreLatLong
+FROM lp_address lpa
+WHERE lpa.warehouseType=2</pre>
             </div>
         </header>
 
@@ -131,6 +183,14 @@
                 <div class="map-header">
                     <h2>Location Map</h2>
                     <div class="map-controls">
+                        <button id="measureDistanceBtn" class="measure-distance-btn" title="Measure distance between two markers">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 3l18 18"></path>
+                                <circle cx="5" cy="5" r="2"></circle>
+                                <circle cx="19" cy="19" r="2"></circle>
+                            </svg>
+                            Measure Distance
+                        </button>
                         <select id="mapStyle">
                             <option value="osm">OpenStreetMap</option>
                             <option value="minimal">Minimal (No POIs)</option>
@@ -138,15 +198,6 @@
                             <option value="streets">Streets Only</option>
                         </select>
                     </div>
-                </div>
-                <div class="map-search-container">
-                    <input type="text" id="mapSearch" placeholder="Search location (e.g., Mumbai, Delhi, or coordinates)">
-                    <button id="searchBtn" class="search-location-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.35-4.35"></path>
-                        </svg>
-                    </button>
                 </div>
                 <div id="map"></div>
                 <div class="legend">

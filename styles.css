@@ -59,6 +59,13 @@ header h1 {
 .file-upload-section {
     display: flex;
     gap: 12px;
+    align-items: center;
+}
+
+.upload-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .upload-btn {
@@ -78,6 +85,112 @@ header h1 {
 
 .upload-btn:hover {
     background-color: #1d4ed8;
+}
+
+.info-icon-btn {
+    padding: 6px;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.info-icon-btn:hover {
+    background-color: #e5e7eb;
+    border-color: #2563eb;
+}
+
+.info-icon-btn svg {
+    color: #6b7280;
+}
+
+.info-icon-btn:hover svg {
+    color: #2563eb;
+}
+
+/* SQL Tooltips */
+.sql-tooltip {
+    position: absolute;
+    top: 60px;
+    right: 24px;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 1100;
+    min-width: 500px;
+    max-width: 700px;
+    display: none;
+}
+
+.sql-tooltip.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #334155;
+}
+
+.tooltip-header span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.tooltip-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.tooltip-close:hover {
+    background-color: #334155;
+    color: #f1f5f9;
+}
+
+.sql-code {
+    padding: 16px;
+    margin: 0;
+    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #e2e8f0;
+    background-color: #0f172a;
+    border-radius: 0 0 8px 8px;
+    overflow-x: auto;
+    white-space: pre;
 }
 
 /* Side Drawer */
@@ -358,6 +471,12 @@ header h1 {
     color: #1a1a1a;
 }
 
+.map-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
 .map-controls select {
     padding: 6px 12px;
     border: 1px solid #d1d5db;
@@ -367,48 +486,33 @@ header h1 {
     cursor: pointer;
 }
 
-.map-search-container {
-    position: absolute;
-    top: 70px;
-    left: 20px;
-    z-index: 600;
+.measure-distance-btn {
     display: flex;
-    gap: 8px;
-    background-color: white;
-    padding: 8px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-.map-search-container input {
-    width: 300px;
-    padding: 8px 12px;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: #ffffff;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     font-size: 13px;
-    outline: none;
-}
-
-.map-search-container input:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-}
-
-.search-location-btn {
-    padding: 8px 12px;
-    background-color: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 6px;
+    color: #374151;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
-.search-location-btn:hover {
-    background-color: #1d4ed8;
+.measure-distance-btn:hover {
+    background-color: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.measure-distance-btn.active {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.measure-distance-btn.active svg {
+    stroke: #ffffff;
 }
 
 #map {
@@ -588,14 +692,34 @@ tbody tr.selected {
     }
 }
 
+/* Distance measurement label */
+.distance-label {
+    background: none;
+    border: none;
+}
+
+.distance-label-content {
+    background-color: #ef4444;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    white-space: nowrap;
+    text-align: center;
+}
+
 /* Leaflet popup */
 .leaflet-popup-content {
     margin: 10px;
-    min-width: 200px;
+    min-width: 350px;
+    max-width: 450px;
+    width: auto;
 }
 
 .popup-content h3 {
-    margin-bottom: 8px;
+    margin: 0 0 8px 0;
     color: #1a1a1a;
     font-size: 14px;
     font-weight: 600;
@@ -605,10 +729,67 @@ tbody tr.selected {
     margin: 4px 0;
     font-size: 12px;
     color: #4b5563;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
 
 .popup-content strong {
     color: #1a1a1a;
+}
+
+.popup-layout-horizontal {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.pod-image-container {
+    flex-shrink: 0;
+    width: 120px;
+    height: 120px;
+}
+
+.pod-image {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    display: block;
+}
+
+.pod-image-container.pod-error-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+}
+
+.pod-image-container.pod-error-state .pod-error {
+    display: block !important;
+    font-size: 10px;
+    color: #6b7280;
+    text-align: center;
+    padding: 8px;
+}
+
+.popup-text-content {
+    flex: 1;
+    min-width: 200px;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+.popup-row {
+    display: flex;
+    gap: 12px;
+}
+
+.popup-row p {
+    flex: 1;
+    margin: 4px 0;
 }
 
 /* Scrollbar */
